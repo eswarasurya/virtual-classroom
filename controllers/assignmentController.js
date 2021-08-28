@@ -16,6 +16,9 @@ const createAssignment = async (req, res) => {
                 submission.toAssignment = assignment._id
                 submission.toStudent = student._id
                 student.submissions.push(submission._id)
+                //
+                student.submissions1.set(assignment._id.toString(), submission._id)
+                //
                 assignment.submissions.push(submission._id)
                 await submission.save()
                 await student.save()
@@ -43,6 +46,7 @@ const removeSubmissionFromStudent = async (student, submissionId) => {
     //swapping element to be removed to the last of array
     [student.submissions[index], student.submissions[l - 1]] = [student.submissions[l - 1], student.submissions[index]]
     student.submissions.pop();
+    
     await student.save();
 }
 
@@ -61,9 +65,14 @@ const deleteAssignment = async (req, res) => {
         for (let i = 0; i < submissions.length; i++) {
             const submission = await Submission.findById(submissions[i])
             const student = await User.findById(submission.toStudent)
+            //
+            student.submissions1.delete(assignment._id.toString())
+            await student.save()
+            //
             await removeSubmissionFromStudent(student, submissions[i]);
             await submission.remove()
         }
+        
         await assignment.remove()
         res.status(200).json({
             message: "Assignemnt successfully removed"
