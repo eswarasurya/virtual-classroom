@@ -13,10 +13,10 @@ const userSchema = mongoose.Schema({
     isTutor: {
         type: Boolean,
         required: true,
-        default: fasle
+        default: false
     },
-    assignments: [{ type: Schema.Types.ObjectId, ref: 'Assignment' }],
-    submissions: [{ type: Schema.Types.ObjectId, ref: 'Submission' }]
+    assignments: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Assignment' }],
+    submissions: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Submission' }]
 })
 
 const User = mongoose.model('User', userSchema)

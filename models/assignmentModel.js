@@ -20,7 +20,7 @@ const assignmentSchema = mongoose.Schema({
         required: true,
         ref: 'User'
     },
-    submissions: [{ type: Schema.Types.ObjectId, ref: 'Submission' }]
+    submissions: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Submission' }]
 })
 
 const Assignment = mongoose.model('Assignment', assignmentSchema);
