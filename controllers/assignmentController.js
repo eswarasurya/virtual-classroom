@@ -1,3 +1,5 @@
+const moment = require('moment')
+
 const Assignment = require('../models/assignmentModel');
 const User = require('../models/userModel');
 const Submission = require('../models/submissionModel')
@@ -8,16 +10,16 @@ const Submission = require('../models/submissionModel')
 const createAssignment = async (req, res) => {
     try {
         const {description, students, publishAt, deadline} = req.body;
-        const assignment = await Assignment.create({description, publishAt: new Date(publishAt), deadline: new Date(deadline), createdBy: req.user._id})
+        const assignment = await Assignment.create({description, publishAt: moment(publishAt), deadline: moment(deadline), createdBy: req.user._id})
         for(let i = 0; i < students.length; i++) {
             const student = await User.findOne({username: students[i], isTutor: false})
             if (student) {
                 const submission = new Submission()
                 submission.toAssignment = assignment._id
                 submission.toStudent = student._id
-                student.submissions.push(submission._id)
+                // student.submissions.push(submission._id)
                 //
-                student.submissions1.set(assignment._id.toString(), submission._id)
+                student.submissions.set(assignment._id.toString(), submission._id)
                 //
                 assignment.submissions.push(submission._id)
                 await submission.save()
@@ -66,10 +68,10 @@ const deleteAssignment = async (req, res) => {
             const submission = await Submission.findById(submissions[i])
             const student = await User.findById(submission.toStudent)
             //
-            student.submissions1.delete(assignment._id.toString())
+            student.submissions.delete(assignment._id.toString())
             await student.save()
             //
-            await removeSubmissionFromStudent(student, submissions[i]);
+            // await removeSubmissionFromStudent(student, submissions[i]);
             await submission.remove()
         }
         
@@ -97,8 +99,10 @@ const updateAssignment = async (req, res) => {
         }
 
         if (description) assignment.description = description
-        if (publishAt) assignment.publishAt = new Date(publishAt)
-        if (deadline) assignment.deadline = new Date(deadline)
+        if (publishAt) assignment.publishAt = moment(publishAt)
+        if (deadline) {
+            assignment.deadline = moment(deadline)
+        }
         await assignment.save()
         res.json({
             message: "update Successful"
@@ -109,8 +113,95 @@ const updateAssignment = async (req, res) => {
             message: error.message
         })
     }
+}
 
+const handelTutor = async (req, res) => {
+    try {
+        const assignmentId = req.params.id
+        const assignment = await Assignment.findById(assignmentId)
+        if (!assignment) throw new Error('Invalid ID')
+        if (!assignment.createdBy.equals(req.user._id)) throw new Error('You cannot have access to this assignment')
+        const submissions = []
+        for(let i = 0; i < assignment.submissions.length; i++) {
+            const sub = await Submission.findById(assignment.submissions[i]).populate('toStudent', 'username')
+            const submissionStatus = getSubmissionStatus(sub.isSubmitted, sub.submitedAt, assignment.deadline)
+            const temp = {
+                user: sub.toStudent.username,
+                status: sub.isSubmitted? 'Submited' : 'Not Submited',
+                remark: sub.remark,
+                submissionStatus, submissionStatus
+            }
+            submissions.push(temp)
+        }
+        const assignmentStatus = getAssignmentStatus(assignment.publishAt, assignment.deadline)
+        res.status(200).json({
+            description: assignment.description,
+            assignmentStatus: assignmentStatus,
+            submissions: submissions
+        })
+
+
+    } catch (error) {
+        console.log(error.message)
+        res.status(400).json({
+            message: error.message
+        })
+    }
+}
+
+const getAssignmentStatus = (publishAt, deadline) => {
+    var assignmentStatus;
+    const currentDate = moment()
+    if (publishAt > currentDate) {
+        assignmentStatus = 'scheduled'
+    } else if (currentDate < deadline) {
+        assignmentStatus = 'ongoing'
+    } else {
+        assignmentStatus = 'Deadline passed'
+    }
+    return assignmentStatus;
+}
+
+const getSubmissionStatus = (isSubmitted, submitedAt, deadline) => {
+    var submissionStatus = 'None';
+    if (isSubmitted && submitedAt < deadline) {
+        submissionStatus = 'Submited in time'
+    } else if (isSubmitted && submitedAt > deadline) {
+        submissionStatus = 'Submited after deadline'
+    }
+    return submissionStatus;
+}
+
+const handelStudent = async (req, res) => {
+    try {
+        const assignmentId = req.params.id
+        const submission = await Submission.findById(req.user.submissions.get(assignmentId))
+        if (!submission) throw new Error('Invaled ID')
+        const assignment = await Assignment.findById(assignmentId)
+        var assignmentStatus = getAssignmentStatus(assignment.publishAt, assignment.deadline)
+        var submissionStatus = getSubmissionStatus(submission.isSubmitted, submission.submitedAt, assignment.deadline)
+
+        res.status(200).json({
+            description: assignment.description,
+            remark: submission.isSubmitted? submission.remark : '',
+            status: submission.isSubmitted? 'Submited' : 'Not Submited',
+            assignmentStatus: assignmentStatus,
+            submissionStatus, submissionStatus
+        })
+    } catch (error) {
+        res.status(400).json({
+            message: error.message
+        })
+    }
+}
+
+const getDetails = async (req, res) => {
+    if (req.user.isTutor) {
+        handelTutor(req, res)
+    } else {
+        handelStudent(req, res)
+    }
 }
 
 
-module.exports = {createAssignment, deleteAssignment, updateAssignment}
+module.exports = {createAssignment, deleteAssignment, updateAssignment, getDetails}
