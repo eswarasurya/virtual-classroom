@@ -9,6 +9,9 @@ const submissionSchema = mongoose.Schema({
         required: true,
         default: false
     },
+    submitedAt: {
+        type: Date
+    },
     toStudent: {
         type: mongoose.Schema.Types.ObjectId,
         required: true,

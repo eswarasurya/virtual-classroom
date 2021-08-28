@@ -12,9 +12,6 @@ const assignmentSchema = mongoose.Schema({
     deadline: {
         type: Date,
     },
-    status: {
-        type: String,
-    },
     createdBy: {
         type: mongoose.Schema.Types.ObjectId,
         required: true,
