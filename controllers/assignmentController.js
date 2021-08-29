@@ -9,8 +9,8 @@ const Submission = require('../models/submissionModel')
 // params description: String, students: Array, publishAt: Date string, deadline: Date string 
 const createAssignment = async (req, res) => {
     try {
-        const {description, students, publishAt, deadline} = req.body;
-        const assignment = await Assignment.create({description, publishAt: moment(publishAt), deadline: moment(deadline), createdBy: req.user._id})
+        const {description, students, publishedAt, deadline} = req.body;
+        const assignment = await Assignment.create({description, publishedAt: moment(publishedAt), deadline: moment(deadline), createdBy: req.user._id})
         for(let i = 0; i < students.length; i++) {
             const student = await User.findOne({username: students[i], isTutor: false})
             if (student) {
@@ -89,7 +89,7 @@ const deleteAssignment = async (req, res) => {
 
 const updateAssignment = async (req, res) => {
     try {
-        const {description, publishAt, deadline} = req.body;
+        const {description, publishedAt, deadline} = req.body;
         const assignment = await Assignment.findById(req.params.id)
         if (!assignment) {
             throw new Error('Invalid Assignment ID')
@@ -99,7 +99,7 @@ const updateAssignment = async (req, res) => {
         }
 
         if (description) assignment.description = description
-        if (publishAt) assignment.publishAt = moment(publishAt)
+        if (publishedAt) assignment.publishedAt = moment(publishedAt)
         if (deadline) {
             assignment.deadline = moment(deadline)
         }
@@ -133,7 +133,7 @@ const handelTutor = async (req, res) => {
             }
             submissions.push(temp)
         }
-        const assignmentStatus = getAssignmentStatus(assignment.publishAt, assignment.deadline)
+        const assignmentStatus = getAssignmentStatus(assignment.publishedAt, assignment.deadline)
         res.status(200).json({
             description: assignment.description,
             assignmentStatus: assignmentStatus,
@@ -149,10 +149,10 @@ const handelTutor = async (req, res) => {
     }
 }
 
-const getAssignmentStatus = (publishAt, deadline) => {
+const getAssignmentStatus = (publishedAt, deadline) => {
     var assignmentStatus;
     const currentDate = moment()
-    if (publishAt > currentDate) {
+    if (publishedAt > currentDate) {
         assignmentStatus = 'scheduled'
     } else if (currentDate < deadline) {
         assignmentStatus = 'ongoing'
@@ -178,7 +178,7 @@ const handelStudent = async (req, res) => {
         const submission = await Submission.findById(req.user.submissions.get(assignmentId))
         if (!submission) throw new Error('Invaled ID')
         const assignment = await Assignment.findById(assignmentId)
-        var assignmentStatus = getAssignmentStatus(assignment.publishAt, assignment.deadline)
+        var assignmentStatus = getAssignmentStatus(assignment.publishedAt, assignment.deadline)
         var submissionStatus = getSubmissionStatus(submission.isSubmitted, submission.submitedAt, assignment.deadline)
 
         res.status(200).json({
@@ -203,5 +203,52 @@ const getDetails = async (req, res) => {
     }
 }
 
+const assignmentFeed = async (req, res) => {
+    try {
+        if (req.user.isTutor) {
+            const createdAssignments = []
+            const assignmentIds = req.user.assignments
+            for (let i = 0; i < assignmentIds.length; i++) {
+                const assignment = await Assignment.findById(assignmentIds[i])
+                const assignmentStatus = getAssignmentStatus(assignment.publishedAt, assignment.deadline)
+                const details = {
+                    description: assignment.description,
+                    publishedAt: assignment.publishedAt.toISOString(),
+                    deadline: assignment.deadline.toISOString(),
+                    status: assignmentStatus,
+                    assignedTo: `${assignment.submissions.length} students`
+                }
+                createdAssignments.push(details)
+            }
+            res.status(200).json({
+                assignments: createdAssignments
+            })
+        } else {
+            const submissionIds = Array.from(req.user.submissions.values())
+            const allSubmissions = []
+            for (let i = 0; i < submissionIds.length; i++) {
+                const submission = await Submission.findById(submissionIds[i]).populate('toAssignment', 'description deadline')
+                var submissionStatus = getSubmissionStatus(submission.isSubmitted, submission.submitedAt, submission.toAssignment.deadline)
+                const details = {
+                    assignmentDescription: submission.toAssignment.description,
+                    assignmentDeadline: submission.toAssignment.deadline,
+                    submissionStatus: submission.isSubmitted? 'Submited' : 'Not Submited',
+                    submissionStatus: submissionStatus,
+                    remark: submission.isSubmitted? submission.remark : '',
+                }
+                allSubmissions.push(details)
+            }
+            res.status(200).json({
+                submissions: allSubmissions
+            })
+        }
+    } catch (error) {
+        res.status(400).json({
+            message: error.message
+        })
+    }
+    
+}
 
-module.exports = {createAssignment, deleteAssignment, updateAssignment, getDetails}
+
+module.exports = {createAssignment, deleteAssignment, updateAssignment, getDetails, assignmentFeed}
