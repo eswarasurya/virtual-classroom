@@ -8,7 +8,8 @@ const {
     deleteAssignment,
     updateAssignment,
     getDetails,
-    assignmentFeed
+    assignmentFeed,
+    feedWithFilter
 } = require('../controllers/assignmentController')
 
 router.post('/create', protect, tutor, createAssignment);
@@ -16,5 +17,6 @@ router.delete('/delete/:id', protect, tutor, deleteAssignment);
 router.put('/update/:id', protect, tutor, updateAssignment);
 router.get('/details/:id', protect, getDetails);
 router.get('/feed', protect, assignmentFeed);
+router.get('/filter', protect, feedWithFilter)
 
 module.exports = router
