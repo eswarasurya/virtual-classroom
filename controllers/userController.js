@@ -1,7 +1,9 @@
 const User = require('../models/userModel')
 const generateToken = require('../utils/generateToken')
 
-// params: username, password
+// desc: Login users
+// path: /user/login
+// access: Public
 const loginUser = async (req, res) => {
     const {username, password} = req.body;
     const user = await User.findOne({username})
@@ -19,6 +21,9 @@ const loginUser = async (req, res) => {
     }
 }
 
+// desc: Register a tutor
+// path: /user/registerTutor
+// access: Public
 const registerTutor = async (req, res) => {
     try {
         const {username, password} = req.body;
@@ -39,6 +44,9 @@ const registerTutor = async (req, res) => {
     }
 }
 
+// desc: Register a student
+// path: /user/registerStudent
+// access: Public
 const registerStudent = async (req, res) => {
     try {
         const {username, password} = req.body;

@@ -3,7 +3,9 @@ const moment = require('moment')
 const Submission = require('../models/submissionModel')
 
 
-//takes assignment id in params
+// desc: Submit an remark for assignment
+// path: /submission/:id
+// access: private
 const submitAnswer = async (req, res) => {
     try {
         const assignmentId = req.params.id

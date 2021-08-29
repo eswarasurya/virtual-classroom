@@ -7,8 +7,9 @@ const Submission = require('../models/submissionModel')
 const {getAssignmentStatus, getSubmissionStatus} = require('../utils/helper')
 
 
-// creates an assignment
-// params description: String, students: Array, publishAt: Date string, deadline: Date string 
+// desc: creates an assignment
+// path: /assignment/create
+// access: Private
 const createAssignment = async (req, res) => {
     try {
         const {description, students, publishedAt, deadline} = req.body;
@@ -40,18 +41,20 @@ const createAssignment = async (req, res) => {
     }
 }
 
+// desc: helper function for deleteAssignment
 const removeSubmissionFromTutor = async (assignment) => {
     const tutor = await User.findById(assignment.createdBy)
     const index = tutor.assignments.indexOf(assignment._id)
     if (index === -1) return;
     const l = tutor.assignments.length;
-    //swapping element to be removed to the last of array
     [tutor.assignments[index], tutor.assignments[l - 1]] = [tutor.assignments[l - 1], tutor.assignments[index]]
     tutor.assignments.pop();
     await tutor.save();
 }
 
-
+// desc: deletes an assignment
+// path: /assignment/delete/:id
+// access: Private
 const deleteAssignment = async (req, res) => {
     try {
         const assignment = await Assignment.findById(req.params.id)
@@ -83,6 +86,9 @@ const deleteAssignment = async (req, res) => {
     }
 }
 
+// desc: Updates an assignment
+// path: /assignment/update/:id
+// access: Private
 const updateAssignment = async (req, res) => {
     try {
         const {description, publishedAt, deadline} = req.body;
@@ -111,6 +117,7 @@ const updateAssignment = async (req, res) => {
     }
 }
 
+// desc: hepler function for getDetails
 const handelTutorDetails = async (req, res) => {
     try {
         const assignmentId = req.params.id
@@ -145,7 +152,7 @@ const handelTutorDetails = async (req, res) => {
     }
 }
 
-
+// desc: helper function for getDetails
 const handelStudentDetails = async (req, res) => {
     try {
         const assignmentId = req.params.id
@@ -169,6 +176,9 @@ const handelStudentDetails = async (req, res) => {
     }
 }
 
+// desc: gets details of an assignment
+// path: /assignment/details/:id
+// access: Private
 const getDetails = async (req, res) => {
     if (req.user.isTutor) {
         handelTutorDetails(req, res)
@@ -177,6 +187,9 @@ const getDetails = async (req, res) => {
     }
 }
 
+// desc: gets the assignment feed for an user
+// path: /assignment/feed
+// access: Private
 const assignmentFeed = async (req, res) => {
     try {
         const publishedAtFilter = req.query.publishedAt

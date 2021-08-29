@@ -1,5 +1,6 @@
 const moment = require('moment')
 
+// desc: returns assignment status
 const getAssignmentStatus = (publishedAt, deadline) => {
     var assignmentStatus;
     const currentDate = moment()
@@ -13,6 +14,7 @@ const getAssignmentStatus = (publishedAt, deadline) => {
     return assignmentStatus;
 }
 
+// desc: returns submission status
 const getSubmissionStatus = (isSubmitted, submitedAt, deadline) => {
     var submissionStatus = 'None';
     const currentDate = moment()
