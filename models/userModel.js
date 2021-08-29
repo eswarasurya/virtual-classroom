@@ -16,7 +16,6 @@ const userSchema = mongoose.Schema({
         default: false
     },
     assignments: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Assignment' }],
-    // submissions: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Submission' }],
     submissions: {
         type: Map,
         of: mongoose.Schema.Types.ObjectId,

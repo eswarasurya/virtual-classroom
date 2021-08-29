@@ -4,6 +4,8 @@ const Assignment = require('../models/assignmentModel');
 const User = require('../models/userModel');
 const Submission = require('../models/submissionModel')
 
+const {getAssignmentStatus, getSubmissionStatus} = require('../utils/helper')
+
 
 // creates an assignment
 // params description: String, students: Array, publishAt: Date string, deadline: Date string 
@@ -17,10 +19,7 @@ const createAssignment = async (req, res) => {
                 const submission = new Submission()
                 submission.toAssignment = assignment._id
                 submission.toStudent = student._id
-                // student.submissions.push(submission._id)
-                //
                 student.submissions.set(assignment._id.toString(), submission._id)
-                //
                 assignment.submissions.push(submission._id)
                 await submission.save()
                 await student.save()
@@ -41,15 +40,15 @@ const createAssignment = async (req, res) => {
     }
 }
 
-const removeSubmissionFromStudent = async (student, submissionId) => {
-    const index = student.submissions.indexOf(submissionId)
+const removeSubmissionFromTutor = async (assignment) => {
+    const tutor = await User.findById(assignment.createdBy)
+    const index = tutor.assignments.indexOf(assignment._id)
     if (index === -1) return;
-    const l = student.submissions.length;
+    const l = tutor.assignments.length;
     //swapping element to be removed to the last of array
-    [student.submissions[index], student.submissions[l - 1]] = [student.submissions[l - 1], student.submissions[index]]
-    student.submissions.pop();
-    
-    await student.save();
+    [tutor.assignments[index], tutor.assignments[l - 1]] = [tutor.assignments[l - 1], tutor.assignments[index]]
+    tutor.assignments.pop();
+    await tutor.save();
 }
 
 
@@ -67,14 +66,11 @@ const deleteAssignment = async (req, res) => {
         for (let i = 0; i < submissions.length; i++) {
             const submission = await Submission.findById(submissions[i])
             const student = await User.findById(submission.toStudent)
-            //
             student.submissions.delete(assignment._id.toString())
             await student.save()
-            //
-            // await removeSubmissionFromStudent(student, submissions[i]);
             await submission.remove()
         }
-        
+        await removeSubmissionFromTutor(assignment)
         await assignment.remove()
         res.status(200).json({
             message: "Assignemnt successfully removed"
@@ -149,33 +145,6 @@ const handelTutorDetails = async (req, res) => {
     }
 }
 
-const getAssignmentStatus = (publishedAt, deadline) => {
-    var assignmentStatus;
-    const currentDate = moment()
-    if (publishedAt > currentDate) {
-        assignmentStatus = 'SCHEDULED'
-    } else if (currentDate < deadline) {
-        assignmentStatus = 'ONGOING'
-    } else {
-        assignmentStatus = 'Deadline passed'
-    }
-    return assignmentStatus;
-}
-
-const getSubmissionStatus = (isSubmitted, submitedAt, deadline) => {
-    var submissionStatus = 'None';
-    const currentDate = moment()
-    if (isSubmitted && submitedAt < deadline) {
-        submissionStatus = 'SUBMITTED'
-    } else if (isSubmitted && submitedAt > deadline) {
-        submissionStatus = 'OVERDUE'
-    } else if (!isSubmitted && deadline < currentDate) {
-        submissionStatus = 'OVERDUE'
-    } else if (!isSubmitted) {
-        submissionStatus = 'PENDING'
-    }
-    return submissionStatus;
-}
 
 const handelStudentDetails = async (req, res) => {
     try {
@@ -262,11 +231,4 @@ const assignmentFeed = async (req, res) => {
     }
 }
 
-const feedWithFilter = (req, res) => {
-    console.log(req.query.state);
-    console.log(req.query.city);
-    res.status(200).json();
-}
-
-
-module.exports = {createAssignment, deleteAssignment, updateAssignment, getDetails, assignmentFeed, feedWithFilter}
+module.exports = {createAssignment, deleteAssignment, updateAssignment, getDetails, assignmentFeed}

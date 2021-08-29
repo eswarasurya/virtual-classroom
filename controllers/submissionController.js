@@ -7,7 +7,7 @@ const Submission = require('../models/submissionModel')
 const submitAnswer = async (req, res) => {
     try {
         const assignmentId = req.params.id
-        const submission = await Submission.findById(req.user.submissions.get(assignmentId))
+        const submission = await Submission.findById(req.user.submissions.get(assignmentId)).populate('toAssignment', 'deadline publishedAt')
         if (!submission) {
             throw new Error('Id not found')
         }
@@ -16,6 +16,10 @@ const submitAnswer = async (req, res) => {
         }
         if (!submission.toStudent.equals(req.user._id)) {
             throw new Error('You cannot submit to this assignment')
+        }
+        const currentDate = moment()
+        if (currentDate < submission.toAssignment.publishedAt) {
+            throw new Error('Assignment has not started Yet')
         }
 
         const {remark} = req.body
