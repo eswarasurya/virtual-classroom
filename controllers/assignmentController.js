@@ -99,7 +99,6 @@ const updateAssignment = async (req, res) => {
         if (!assignment.createdBy.equals(req.user._id)) {
             throw new Error('You can only update assignments that are created by you')
         }
-
         if (description) assignment.description = description
         if (publishedAt) assignment.publishedAt = moment(publishedAt)
         if (deadline) {
@@ -128,9 +127,9 @@ const handelTutorDetails = async (req, res) => {
         for(let i = 0; i < assignment.submissions.length; i++) {
             const sub = await Submission.findById(assignment.submissions[i]).populate('toStudent', 'username')
             const submissionStatus = getSubmissionStatus(sub.isSubmitted, sub.submitedAt, assignment.deadline)
+            if(!sub.isSubmitted) continue;
             const temp = {
                 user: sub.toStudent.username,
-                status: sub.isSubmitted? 'Submited' : 'Not Submited',
                 remark: sub.remark,
                 submissionStatus, submissionStatus
             }
@@ -184,7 +183,7 @@ const getDetails = async (req, res) => {
         handelTutorDetails(req, res)
     } else {
         handelStudentDetails(req, res)
-    }
+    }    
 }
 
 // desc: gets the assignment feed for an user
@@ -193,7 +192,7 @@ const getDetails = async (req, res) => {
 const assignmentFeed = async (req, res) => {
     try {
         const publishedAtFilter = req.query.publishedAt
-        if (req.user.isTutor) {
+        if (req.user.isTutor) {     // for tutor
             const createdAssignments = []
             const assignmentIds = req.user.assignments
             for (let i = 0; i < assignmentIds.length; i++) {
@@ -201,18 +200,19 @@ const assignmentFeed = async (req, res) => {
                 const assignmentStatus = getAssignmentStatus(assignment.publishedAt, assignment.deadline)
                 if (publishedAtFilter && publishedAtFilter !== assignmentStatus) continue;
                 const details = {
+                    id: assignment._id,
                     description: assignment.description,
                     publishedAt: assignment.publishedAt.toISOString(),
                     deadline: assignment.deadline.toISOString(),
                     status: assignmentStatus,
-                    assignedTo: `${assignment.submissions.length} students`
+                    assignedTo: assignment.submissions.length == 1 ?`1 student` : `${assignment.submissions.length} students`
                 }
                 createdAssignments.push(details)
             }
             res.status(200).json({
                 assignments: createdAssignments
             })
-        } else {
+        } else {        // for student
             const statusFilter = req.query.status
             const submissionIds = Array.from(req.user.submissions.values())
             const allSubmissions = []
@@ -223,6 +223,7 @@ const assignmentFeed = async (req, res) => {
                 if (publishedAtFilter && publishedAtFilter !== assignmentStatus) continue;
                 if (statusFilter && statusFilter !== 'ALL' && statusFilter !== submissionStatus) continue;
                 const details = {
+                    assignmentId: submission.toAssignment._id,
                     assignmentDescription: submission.toAssignment.description,
                     assignmentDeadline: submission.toAssignment.deadline,
                     assignmentStatus: assignmentStatus,
